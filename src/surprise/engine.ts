@@ -206,6 +206,44 @@ export function createAudio(): SurpriseAudio | null {
   };
 }
 
+/* Shared, lazily built sprites. Every engine instance (including the length simulation and each
+   edit-triggered rebuild) reuses them: iOS Safari caps total canvas memory and starts drawing
+   blank canvases once it is exceeded. */
+let bgCache: HTMLCanvasElement | null = null,
+  bokehCache: HTMLCanvasElement | null = null;
+function background(): HTMLCanvasElement {
+  if (bgCache) return bgCache;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const x = c.getContext("2d")!,
+    g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#1A0B2E");
+  g.addColorStop(0.55, "#3D1450");
+  g.addColorStop(1, "#6B1F4F");
+  x.fillStyle = g;
+  x.fillRect(0, 0, W, H);
+  const v = x.createRadialGradient(W / 2, H * 0.45, 200, W / 2, H * 0.5, H * 0.85);
+  v.addColorStop(0, "rgba(0,0,0,0)");
+  v.addColorStop(1, "rgba(0,0,0,.5)");
+  x.fillStyle = v;
+  x.fillRect(0, 0, W, H);
+  return (bgCache = c);
+}
+function bokehSprite(): HTMLCanvasElement {
+  if (bokehCache) return bokehCache;
+  const c = document.createElement("canvas");
+  c.width = c.height = 200;
+  const x = c.getContext("2d")!,
+    g = x.createRadialGradient(100, 100, 0, 100, 100, 100);
+  g.addColorStop(0, "rgba(255,210,170,.55)");
+  g.addColorStop(0.6, "rgba(255,170,150,.18)");
+  g.addColorStop(1, "rgba(255,150,150,0)");
+  x.fillStyle = g;
+  x.fillRect(0, 0, 200, 200);
+  return (bokehCache = c);
+}
+
 /* ----- Engine ----- */
 interface Item {
   x: number;
@@ -277,35 +315,8 @@ export function create(data: SurpriseData, opts: SurpriseOptions = {}): Surprise
   const nCandles = age > 0 && age <= 9 ? age : 5;
   const message = (data.cards || []).filter(Boolean).join("\n\n");
 
-  // Background with bokeh lights
-  const bg = document.createElement("canvas");
-  bg.width = W;
-  bg.height = H;
-  ((x: Ctx) => {
-    const g = x.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#1A0B2E");
-    g.addColorStop(0.55, "#3D1450");
-    g.addColorStop(1, "#6B1F4F");
-    x.fillStyle = g;
-    x.fillRect(0, 0, W, H);
-    const v = x.createRadialGradient(W / 2, H * 0.45, 200, W / 2, H * 0.5, H * 0.85);
-    v.addColorStop(0, "rgba(0,0,0,0)");
-    v.addColorStop(1, "rgba(0,0,0,.5)");
-    x.fillStyle = v;
-    x.fillRect(0, 0, W, H);
-  })(bg.getContext("2d")!);
-  const bokehSpr = (() => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 200;
-    const x = c.getContext("2d")!,
-      g = x.createRadialGradient(100, 100, 0, 100, 100, 100);
-    g.addColorStop(0, "rgba(255,210,170,.55)");
-    g.addColorStop(0.6, "rgba(255,170,150,.18)");
-    g.addColorStop(1, "rgba(255,150,150,0)");
-    x.fillStyle = g;
-    x.fillRect(0, 0, 200, 200);
-    return c;
-  })();
+  const bg = background(),
+    bokehSpr = bokehSprite();
   const bokeh = (() => {
     const r = rng(5),
       a: { x: number; y: number; s: number; v: number; ph: number; a: number }[] = [];

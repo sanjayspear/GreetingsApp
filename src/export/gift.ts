@@ -41,7 +41,7 @@ canvas{display:block;max-width:100vw;max-height:100%;width:auto;height:auto;touc
   addEventListener("resize",fitCanvas);fitCanvas();
   function pt(e){var r=cv.getBoundingClientRect();return[(e.clientX-r.left)*1080/r.width,(e.clientY-r.top)*1350/r.height]}
   cv.addEventListener("pointerdown",function(e){e.preventDefault();down=true;try{cv.setPointerCapture(e.pointerId)}catch(_){}
-    if(!audio){audio=SurpriseEngine.createAudio();} if(audio){audio.resume();if(on)audio.music();}
+    try{if(!audio){audio=SurpriseEngine.createAudio();} if(audio){audio.resume();if(on)audio.music().catch(function(){});}}catch(_){audio=null}
     var p=pt(e);eng.tap(p[0],p[1],now())});
   cv.addEventListener("pointermove",function(e){if(!down)return;var p=pt(e);eng.drag(p[0],p[1],now())});
   cv.addEventListener("pointerup",function(){down=false;eng.up()});cv.addEventListener("pointercancel",function(){down=false;eng.up()});

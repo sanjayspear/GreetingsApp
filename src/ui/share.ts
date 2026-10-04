@@ -6,8 +6,9 @@ import { designById } from "../cards/designs";
 import { cv, paintTo, storyLength, surpriseData } from "../cards/render";
 import { create as createSurprise } from "../surprise/engine";
 import { getMusic, ensureAudio, isMusicOn, stopMusic } from "../audio/music";
-import { SaveDeclinedError, webDownloads } from "../export/downloads";
+import { SaveDeclinedError, prefersShareSheet, webDownloads } from "../export/downloads";
 import { buildGiftHtml } from "../export/gift";
+import { buildGiftLink } from "../export/link";
 import { canEncode, encodeMp4, recMime, recordFallback, teaserBlob, videoMime, type DrawFn, type VideoResult } from "../export/video";
 import { toName } from "./form";
 import { togglePanel } from "./sheets";
@@ -180,6 +181,27 @@ export function initShare(): void {
     }
     btn.textContent = label;
     btn.disabled = false;
+  });
+
+  $("saveLink").addEventListener("click", async () => {
+    if (!state.text) return;
+    const d = surpriseData();
+    const url = await buildGiftLink({ occ: d.occ, to: d.to, number: d.number, headline: d.headline, cards: d.cards, signoff: d.signoff }, location.href);
+    if (prefersShareSheet() && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: `A surprise for ${d.to}`, text: `A surprise for ${d.to} 🎁 Tap to open:`, url });
+        return;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        /* fall back to copying */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Link copied. Paste it into WhatsApp or a message.");
+    } catch {
+      toast("Couldn't copy the link on this device");
+    }
   });
 
   $("saveGift").addEventListener("click", async () => {

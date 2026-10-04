@@ -5,6 +5,7 @@
 - Names, messages, photos and generated cards are never uploaded. Saved dates stay in this browser's `localStorage`.
 - Optional AI greetings only run if the site owner sets `VITE_AI_ENDPOINT`; then the form details (not the photo) are sent to that URL.
 - The exported "surprise" file is self-contained: it embeds fonts and your photo and blocks all network requests (CSP `default-src 'none'`). Anyone who has the file can see what is inside it, including the photo.
+- The "surprise link" packs the names and messages (never the photo) into the URL fragment (`#s=...`). Browsers don't send the fragment to any server, so nothing is uploaded, but anyone who has the link can read the text. The page validates the decoded data and only draws it onto a canvas.
 
 ## Hardening in place
 - Production Content-Security-Policy (no inline scripts, no third-party origins), `no-referrer`, `rel="noopener noreferrer"` on external links.

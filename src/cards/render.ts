@@ -52,10 +52,15 @@ function surpriseLength(): number {
   return (sLen = t + 0.2);
 }
 export function surpriseAudio(): SurpriseAudio | null {
-  if (!sAudio) sAudio = createAudio();
-  if (sAudio) {
-    sAudio.resume();
-    if (isMusicOn()) sAudio.music();
+  // Sound is optional: if the browser (notably iOS Safari) refuses, the game must still play.
+  try {
+    if (!sAudio) sAudio = createAudio();
+    if (sAudio) {
+      sAudio.resume();
+      if (isMusicOn()) sAudio.music().catch(() => {});
+    }
+  } catch {
+    sAudio = null;
   }
   return sAudio;
 }

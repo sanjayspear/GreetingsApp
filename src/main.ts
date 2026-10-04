@@ -2,7 +2,7 @@ import "./styles/fonts";
 import "./styles/main.css";
 import { registerSW } from "virtual:pwa-register";
 import type { CardStyle, Occasion, Tone } from "./core/types";
-import { $, $$ } from "./core/dom";
+import { $, $$, toast } from "./core/dom";
 import { OCC, now, reduced, state } from "./state";
 import { DESIGNS } from "./cards/designs";
 import { bindSurpriseInput, frame, getSurprise, getSurpriseAudio, render, replay, showCard, startLoop, storyLength, surpriseAudio } from "./cards/render";
@@ -13,6 +13,8 @@ import { details, validate } from "./ui/form";
 import { initPhoto } from "./ui/photo";
 import { closeSheets, initSheets, togglePanel } from "./ui/sheets";
 import { initShare } from "./ui/share";
+import { LINK_PREFIX, decodeLink } from "./export/link";
+import { startViewer } from "./surprise/viewer";
 import { initDates } from "./dates/ui";
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -266,6 +268,14 @@ initDates();
 void fontsReady.then(() => {
   if (state.text) render();
 });
+
+// Opened from a shared surprise link (#s=...): play it full-screen instead of showing the editor.
+if (location.hash.startsWith(LINK_PREFIX)) {
+  void Promise.all([decodeLink(location.hash), fontsReady]).then(([d]) => {
+    if (d) startViewer({ ...d, photo: null });
+    else toast("This surprise link looks incomplete. Ask them to send it again.");
+  });
+}
 
 // Offline support: the service worker precaches the app shell; updates apply on next load.
 registerSW({ immediate: true });
