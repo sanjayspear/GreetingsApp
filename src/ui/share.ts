@@ -6,7 +6,7 @@ import { designById } from "../cards/designs";
 import { cv, paintTo, storyLength, surpriseData } from "../cards/render";
 import { create as createSurprise } from "../surprise/engine";
 import { getMusic, ensureAudio, isMusicOn, stopMusic } from "../audio/music";
-import { SaveDeclinedError, prefersShareSheet, webDownloads } from "../export/downloads";
+import { SaveDeclinedError, mimeFor, prefersShareSheet, shareFile, webDownloads } from "../export/downloads";
 import { buildGiftHtml } from "../export/gift";
 import { buildGiftLink } from "../export/link";
 import { canEncode, encodeMp4, recMime, recordFallback, teaserBlob, videoMime, type DrawFn, type VideoResult } from "../export/video";
@@ -35,6 +35,40 @@ async function saveFile(filename: string, data: Blob | string, okMsg: string, fa
     if (!(e instanceof SaveDeclinedError)) toast(failMsg);
     return false;
   }
+}
+
+/**
+ * Send a file straight to WhatsApp & co. via the share sheet (desktop gets a download).
+ * After a long job (video encode) the browser may refuse the share because the tap has expired;
+ * then we show a "Tap to send" button so the person's next tap is a fresh, allowed gesture.
+ */
+function armSend(after: HTMLElement, label: string, run: () => Promise<void>): void {
+  const go = document.createElement("button");
+  go.type = "button";
+  go.className = "list-row featured";
+  go.dataset.icon = "📤";
+  go.textContent = label;
+  after.insertAdjacentElement("afterend", go);
+  go.addEventListener("click", async () => {
+    go.disabled = true;
+    await run();
+    go.remove();
+  });
+}
+
+async function sendFile(after: HTMLElement, filename: string, data: Blob, okMsg: string, failMsg?: string): Promise<void> {
+  const blob = data.type ? data : new Blob([data], { type: mimeFor(filename) });
+  const r = await shareFile(filename, blob);
+  if (r === "blocked") {
+    armSend(after, "Ready: tap to send", async () => {
+      const r2 = await shareFile(filename, blob);
+      if (r2 === "shared") toast(okMsg);
+      else if (r2 !== "declined") await saveFile(filename, blob, okMsg, failMsg);
+    });
+    return;
+  }
+  if (r === "shared") toast(okMsg);
+  else if (r !== "declined") await saveFile(filename, blob, okMsg, failMsg);
 }
 
 const teaserDraw: DrawFn = (ctx, t) => createSurprise(surpriseData()).teaser(ctx, t);
@@ -75,7 +109,7 @@ export function initShare(): void {
       drawCardAt(x, state.cards[0].face, CCX, CCY, 1, 0, 1, true);
     }
     const blob = await new Promise<Blob | null>((res) => c.toBlob(res, "image/png"));
-    if (blob) await saveFile(`${fileBase()}-card.png`, blob, "Card saved", "Couldn't save the card");
+    if (blob) await sendFile(btn, `${fileBase()}-card.png`, blob, "Card ready to send", "Couldn't save the card");
     else toast("Couldn't save the card");
     btn.disabled = false;
   });
@@ -119,14 +153,15 @@ export function initShare(): void {
       }
       btn.textContent = label;
       if (!res || !res.blob.size) throw new Error("empty");
-      await saveFile(
+      await sendFile(
+        btn,
         `${fileBase()}-card.${ext}`,
         res.blob,
-        (res.hd ? "HD video saved" : "Video saved") + (res.audio ? " with music" : "") + (res.hd ? "" : " (standard quality on this device)"),
+        (res.hd ? "HD video" : "Video") + (res.audio ? " with music" : "") + (res.hd ? "" : " (standard quality on this device)") + " ready",
         "Couldn't save the video"
       );
     } catch {
-      toast("Video isn't supported on this device. Save as image instead.");
+      toast("Video isn't supported on this device. Send the card as an image instead.");
     }
     btn.textContent = label;
     btn.disabled = false;
@@ -137,7 +172,7 @@ export function initShare(): void {
     const btn = $<HTMLButtonElement>("saveTeaser");
     btn.disabled = true;
     const blob = await teaserBlob(teaserDraw);
-    if (blob) await saveFile(`${fileBase()}-teaser.png`, blob, "Teaser photo saved");
+    if (blob) await sendFile(btn, `${fileBase()}-teaser.png`, blob, "Teaser photo sent");
     btn.disabled = false;
   });
 
@@ -148,11 +183,13 @@ export function initShare(): void {
     btn.disabled = true;
     btn.textContent = "Step 1 of 2: teaser photo…";
     const blob = await teaserBlob(teaserDraw);
-    const ok = blob ? await saveFile(`${fileBase()}-teaser.png`, blob, "Teaser saved. Now the surprise link…") : false;
+    const r = blob ? await shareFile(`${fileBase()}-teaser.png`, blob) : "declined";
+    let ok = r === "shared";
+    if (r === "blocked" || r === "unavailable") ok = blob ? await saveFile(`${fileBase()}-teaser.png`, blob, "Teaser saved. Now the surprise link…") : false;
     if (ok) {
       btn.textContent = "Step 2 of 2: surprise link…";
       await wait(400);
-      await shareLink();
+      await shareLink(btn);
     }
     btn.textContent = label;
     btn.disabled = false;
@@ -175,7 +212,7 @@ export function initShare(): void {
         (c, t) => eng.teaser(c, t)
       );
       btn.textContent = label;
-      await saveFile(`${fileBase()}-teaser.mp4`, res.blob, "Teaser video saved");
+      await sendFile(btn, `${fileBase()}-teaser.mp4`, res.blob, "Teaser video sent");
     } catch {
       toast("Couldn't make the teaser video on this device. Use the teaser photo instead.");
     }
@@ -184,7 +221,7 @@ export function initShare(): void {
   });
 
   /** Share (touch devices) or copy the surprise link. Returns false if the person cancelled. */
-  async function shareLink(): Promise<boolean> {
+  async function shareLink(after?: HTMLElement): Promise<boolean> {
     const d = surpriseData();
     const url = await buildGiftLink({ occ: d.occ, to: d.to, number: d.number, headline: d.headline, cards: d.cards, signoff: d.signoff }, location.href);
     if (prefersShareSheet() && typeof navigator.share === "function") {
@@ -193,6 +230,11 @@ export function initShare(): void {
         return true;
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return false;
+        if (after && e instanceof DOMException && e.name === "NotAllowedError") {
+          // The tap expired while the previous share sheet was open: ask for a fresh one.
+          armSend(after, "Ready: tap to send the link", async () => void (await shareLink()));
+          return false;
+        }
         /* fall back to copying */
       }
     }
