@@ -16,6 +16,7 @@ import { initShare } from "./ui/share";
 import { LINK_PREFIX, decodeLink } from "./export/link";
 import { startViewer } from "./surprise/viewer";
 import { initDates } from "./dates/ui";
+import { initInstall } from "./ui/install";
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 let busy = false;
@@ -265,6 +266,7 @@ initSheets();
 initPreview();
 initShare();
 initDates();
+initInstall();
 void fontsReady.then(() => {
   if (state.text) render();
 });

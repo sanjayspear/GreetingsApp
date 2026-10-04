@@ -32,6 +32,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* ---------- App bar ---------- */
 .appbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid transparent; }
+.install-btn { margin-left: auto; appearance: none; border: 0; cursor: pointer; background: var(--primary); color: #fff; font-weight: 700; font-size: .85rem; min-height: 36px; padding: 0 14px; border-radius: 999px; }
+.install-help { max-width: 640px; margin: 0 auto; padding: 0 18px 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: .88rem; }
+.install-help p { margin: 0; }
+.install-help .link-btn { white-space: nowrap; }
 .appbar-in { max-width: 640px; margin: 0 auto; height: 60px; padding: 0 18px; display: flex; align-items: center; gap: 10px; }
 .logo { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg, #FF6A8E, #D1245E 55%, #8E1A4A); color: #fff; box-shadow: 0 4px 12px -4px rgba(209,36,94,.6); }
 .brand { font-family: var(--font-display); font-weight: 800; font-size: 1.28rem; letter-spacing: -.02em; }
