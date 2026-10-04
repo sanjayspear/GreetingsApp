@@ -148,11 +148,11 @@ export function initShare(): void {
     btn.disabled = true;
     btn.textContent = "Step 1 of 2: teaser photo…";
     const blob = await teaserBlob(teaserDraw);
-    const ok = blob ? await saveFile(`${fileBase()}-teaser.png`, blob, "Teaser saved. Now the surprise file…") : false;
+    const ok = blob ? await saveFile(`${fileBase()}-teaser.png`, blob, "Teaser saved. Now the surprise link…") : false;
     if (ok) {
-      btn.textContent = "Step 2 of 2: surprise file…";
+      btn.textContent = "Step 2 of 2: surprise link…";
       await wait(400);
-      await saveFile(`${fileBase()}-surprise.html`, buildGiftHtml(), "Both saved. Send the photo first, then the file.");
+      await shareLink();
     }
     btn.textContent = label;
     btn.disabled = false;
@@ -183,25 +183,31 @@ export function initShare(): void {
     btn.disabled = false;
   });
 
-  $("saveLink").addEventListener("click", async () => {
-    if (!state.text) return;
+  /** Share (touch devices) or copy the surprise link. Returns false if the person cancelled. */
+  async function shareLink(): Promise<boolean> {
     const d = surpriseData();
     const url = await buildGiftLink({ occ: d.occ, to: d.to, number: d.number, headline: d.headline, cards: d.cards, signoff: d.signoff }, location.href);
     if (prefersShareSheet() && typeof navigator.share === "function") {
       try {
         await navigator.share({ title: `A surprise for ${d.to}`, text: `A surprise for ${d.to} 🎁 Tap to open:`, url });
-        return;
+        return true;
       } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (e instanceof DOMException && e.name === "AbortError") return false;
         /* fall back to copying */
       }
     }
     try {
       await navigator.clipboard.writeText(url);
       toast("Link copied. Paste it into WhatsApp or a message.");
+      return true;
     } catch {
       toast("Couldn't copy the link on this device");
+      return false;
     }
+  }
+
+  $("saveLink").addEventListener("click", async () => {
+    if (state.text) await shareLink();
   });
 
   $("saveGift").addEventListener("click", async () => {

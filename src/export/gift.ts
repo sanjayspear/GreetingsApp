@@ -26,13 +26,17 @@ ${giftFontCss}
 html,body{margin:0;height:100%;background:#0B0614;overflow:hidden;font-family:Figtree,system-ui,sans-serif}
 body{display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);box-sizing:border-box}
 canvas{display:block;max-width:100vw;max-height:100%;width:auto;height:auto;touch-action:none}
+#nojs{position:fixed;left:0;right:0;top:34%;padding:0 28px;text-align:center;color:#FFE9F0;font-size:20px;line-height:1.45}
+#nojs b{display:block;font-size:26px;margin-bottom:10px}
 #snd{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:20px}
 </style></head><body>
 <canvas id="c" width="1080" height="1350"></canvas>
+<div id="nojs"><b>🎁 Your surprise is inside</b>This preview can't play it. Tap the share icon, then choose <b style="display:inline;font-size:inherit">Open in Safari</b> (or Chrome), or ask for the surprise link instead.</div>
 <button id="snd" aria-label="Sound on or off">🔊</button>
 <script>${giftEngineSource.replace(/<\/script/gi, "<\\/script")}</script>
 <script>
 (function(){
+  var nj=document.getElementById("nojs");if(nj)nj.style.display="none";
   var data=${json};
   var cv=document.getElementById("c"),ctx=cv.getContext("2d"),audio=null,on=true,down=false,t0=performance.now();
   var now=function(){return (performance.now()-t0)/1000};
