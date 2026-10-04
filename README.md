@@ -52,3 +52,7 @@ repo variable `VITE_AI_ENDPOINT` (or export it when building locally). On any er
 ## Regenerating icons
 
 `npm run icons` rewrites `public/icons/*`.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Bundled fonts (`@fontsource/*`) are under the SIL Open Font License.
